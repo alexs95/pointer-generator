@@ -91,6 +91,7 @@ class BeamSearchDecoder(object):
       original_article = batch.original_articles[0]  # string
       original_abstract = batch.original_abstracts[0]  # string
       original_abstract_sents = batch.original_abstracts_sents[0]  # list of strings
+      storyid = batch.storyids[0]  # string
 
       article_withunks = data.show_art_oovs(original_article, self._vocab) # string
       abstract_withunks = data.show_abs_oovs(original_abstract, self._vocab, (batch.art_oovs[0] if FLAGS.pointer_gen else None)) # string
@@ -111,7 +112,7 @@ class BeamSearchDecoder(object):
       decoded_output = ' '.join(decoded_words) # single string
 
       if FLAGS.single_pass:
-        self.write_for_rouge(original_abstract_sents, decoded_words, counter) # write ref summary and decoded summary to file, to eval with pyrouge later
+        self.write_for_rouge(original_abstract_sents, decoded_words, storyid) # write ref summary and decoded summary to file, to eval with pyrouge later
         counter += 1 # this is how many examples we've decoded
       else:
         print_results(article_withunks, abstract_withunks, decoded_output) # log output to screen
@@ -124,7 +125,7 @@ class BeamSearchDecoder(object):
           _ = util.load_ckpt(self._saver, self._sess)
           t0 = time.time()
 
-  def write_for_rouge(self, reference_sents, decoded_words, ex_index):
+  def write_for_rouge(self, reference_sents, decoded_words, storyid):
     """Write output to file in correct format for eval with pyrouge. This is called in single_pass mode.
 
     Args:
@@ -149,8 +150,8 @@ class BeamSearchDecoder(object):
     reference_sents = [make_html_safe(w) for w in reference_sents]
 
     # Write to file
-    ref_file = os.path.join(self._rouge_ref_dir, "%06d_reference.txt" % ex_index)
-    decoded_file = os.path.join(self._rouge_dec_dir, "%06d_decoded.txt" % ex_index)
+    ref_file = os.path.join(self._rouge_ref_dir, "{}_reference.txt".format(storyid.decode('ascii')))
+    decoded_file = os.path.join(self._rouge_dec_dir, "{}_decoded.txt".format(storyid.decode('ascii')))
 
     with open(ref_file, "w") as f:
       for idx,sent in enumerate(reference_sents):
@@ -159,7 +160,7 @@ class BeamSearchDecoder(object):
       for idx,sent in enumerate(decoded_sents):
         f.write(sent) if idx==len(decoded_sents)-1 else f.write(sent+"\n")
 
-    tf.logging.info("Wrote example %i to file" % ex_index)
+    tf.logging.info("Wrote story {} to file".format(storyid.decode('ascii')))
 
 
   def write_for_attnvis(self, article, abstract, decoded_words, attn_dists, p_gens):
@@ -221,6 +222,7 @@ def rouge_log(results_dict, dir_to_write):
   """Log ROUGE results to screen and write to file.
 
   Args:
+
     results_dict: the dictionary returned by pyrouge
     dir_to_write: the directory where we will write the results to"""
   log_str = ""

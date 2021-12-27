@@ -28,7 +28,7 @@ import data
 class Example(object):
   """Class representing a train/val/test example for text summarization."""
 
-  def __init__(self, article, abstract_sentences, vocab, hps):
+  def __init__(self, article, abstract_sentences, vocab, hps, storyid):
     """Initializes the Example, performing tokenization and truncation to produce the encoder, decoder and target sequences, which are stored in self.
 
     Args:
@@ -37,6 +37,7 @@ class Example(object):
       vocab: Vocabulary object
       hps: hyperparameters
     """
+    self.storyid = storyid
     self.hps = hps
 
     # Get ids of special tokens
@@ -212,6 +213,7 @@ class Batch(object):
     self.original_articles = [ex.original_article for ex in example_list] # list of lists
     self.original_abstracts = [ex.original_abstract for ex in example_list] # list of lists
     self.original_abstracts_sents = [ex.original_abstract_sents for ex in example_list] # list of list of lists
+    self.storyids = [ex.storyid for ex in example_list] # list of strings
 
 
 class Batcher(object):
@@ -292,7 +294,7 @@ class Batcher(object):
 
     while True:
       try:
-        (article, abstract) = next(input_gen) # read the next example from file. article and abstract are both strings.
+        storyid, article, abstract = next(input_gen) # read the next example from file. article and abstract are both strings.
       except StopIteration: # if there are no more examples:
         tf.logging.info("The example generator for this example queue filling thread has exhausted data.")
         if self._single_pass:
@@ -303,7 +305,7 @@ class Batcher(object):
           raise Exception("single_pass mode is off but the example generator is out of data; error.")
 
       abstract_sentences = [sent.strip() for sent in data.abstract2sents(abstract)] # Use the <s> and </s> tags in abstract to get a list of sentences.
-      example = Example(article, abstract_sentences, self._vocab, self._hps) # Process into an Example.
+      example = Example(article, abstract_sentences, self._vocab, self._hps, storyid) # Process into an Example.
       self._example_queue.put(example) # place the Example in the example queue.
 
 
@@ -361,7 +363,7 @@ class Batcher(object):
     Args:
       example_generator: a generator of tf.Examples from file. See data.example_generator"""
     while True:
-      e = next(example_generator) # e is a tf.Example
+      storyid, e = next(example_generator) # e is a tf.Example
       try:
         article_text = e.features.feature['article'].bytes_list.value[0].decode() # the article text was saved under the key 'article' in the data files
         abstract_text = e.features.feature['abstract'].bytes_list.value[0].decode() # the abstract text was saved under the key 'abstract' in the data files
@@ -371,4 +373,4 @@ class Batcher(object):
       if len(article_text)==0: # See https://github.com/abisee/pointer-generator/issues/1
         tf.logging.warning('Found an example with empty article text. Skipping it.')
       else:
-        yield (article_text, abstract_text)
+        yield storyid, article_text, abstract_text

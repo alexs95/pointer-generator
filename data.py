@@ -133,9 +133,11 @@ def example_generator(data_path, single_pass):
       while True:
         len_bytes = reader.read(8)
         if not len_bytes: break # finished reading this file
-        str_len = struct.unpack('q', len_bytes)[0]
+        id_len = struct.unpack('q', len_bytes)[0]
+        storyid = struct.unpack('%ds' % id_len, reader.read(id_len))[0]
+        str_len = struct.unpack('q', reader.read(8))[0]
         example_str = struct.unpack('%ds' % str_len, reader.read(str_len))[0]
-        yield example_pb2.Example.FromString(example_str)
+        yield storyid, example_pb2.Example.FromString(example_str)
     if single_pass:
       print("example_generator completed reading all datafiles. No more data.")
       break
