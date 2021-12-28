@@ -288,8 +288,8 @@ def main(unused_argv):
     FLAGS.batch_size = FLAGS.beam_size
 
   # If single_pass=True, check we're in decode mode
-  if FLAGS.single_pass and FLAGS.mode!='decode':
-    raise Exception("The single_pass flag should only be True in decode mode")
+  if FLAGS.single_pass and (FLAGS.mode not in ['rouge', 'decode']):
+    raise Exception("The single_pass flag should only be True in decode or rouge mode")
 
   # Make a namedtuple hps, containing the values of the hyperparameters that the model needs
   hparam_list = ['mode', 'lr', 'adagrad_init_acc', 'rand_unif_init_mag', 'trunc_norm_init_std', 'max_grad_norm', 'hidden_dim', 'emb_dim', 'batch_size', 'max_dec_steps', 'max_enc_steps', 'coverage', 'cov_loss_wt', 'pointer_gen']
@@ -317,6 +317,13 @@ def main(unused_argv):
     model = SummarizationModel(decode_model_hps, vocab)
     decoder = BeamSearchDecoder(model, batcher, vocab)
     decoder.decode() # decode indefinitely (unless single_pass=True, in which case deocde the dataset exactly once)
+  elif hps.mode == 'rouge':
+    decode_model_hps = hps  # This will be the hyperparameters for the decoder model
+    decode_model_hps = hps._replace(
+      max_dec_steps=1)  # The model is configured with max_dec_steps=1 because we only ever run one step of the decoder at a time (to do beam search). Note that the batcher is initialized with max_dec_steps equal to e.g. 100 because the batches need to contain the full summaries
+    model = SummarizationModel(decode_model_hps, vocab)
+    decoder = BeamSearchDecoder(model, batcher, vocab)
+    decoder.rouge()  # run rouge evaluation, assumes decode has been run with the same parameters
   else:
     raise ValueError("The 'mode' flag must be one of train/eval/decode")
 

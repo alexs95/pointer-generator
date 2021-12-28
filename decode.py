@@ -53,7 +53,7 @@ class BeamSearchDecoder(object):
     # Load an initial checkpoint to use for decoding
     ckpt_path = util.load_ckpt(self._saver, self._sess)
 
-    if FLAGS.single_pass:
+    if FLAGS.single_pass and FLAGS.mode == 'decode':
       # Make a descriptive decode directory name
       ckpt_name = "ckpt-" + ckpt_path.split('-')[-1] # this is something of the form "ckpt-123456"
       self._decode_dir = os.path.join(FLAGS.log_root, get_decode_dir_name(ckpt_name))
@@ -74,6 +74,10 @@ class BeamSearchDecoder(object):
       if not os.path.exists(self._rouge_dec_dir): os.mkdir(self._rouge_dec_dir)
 
 
+  def rouge(self):
+    results_dict = rouge_eval(self._rouge_ref_dir, self._rouge_dec_dir)
+    rouge_log(results_dict, self._decode_dir)
+
   def decode(self):
     """Decode examples until data is exhausted (if FLAGS.single_pass) and return, or decode indefinitely, loading latest checkpoint at regular intervals"""
     t0 = time.time()
@@ -83,9 +87,6 @@ class BeamSearchDecoder(object):
       if batch is None: # finished decoding dataset in single_pass mode
         assert FLAGS.single_pass, "Dataset exhausted, but we are not in single_pass mode"
         tf.logging.info("Decoder has finished reading dataset for single_pass.")
-        tf.logging.info("Output has been saved in %s and %s. Now starting ROUGE eval...", self._rouge_ref_dir, self._rouge_dec_dir)
-        results_dict = rouge_eval(self._rouge_ref_dir, self._rouge_dec_dir)
-        rouge_log(results_dict, self._decode_dir)
         return
 
       original_article = batch.original_articles[0]  # string
