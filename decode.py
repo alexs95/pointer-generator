@@ -88,6 +88,10 @@ class BeamSearchDecoder(object):
         assert FLAGS.single_pass, "Dataset exhausted, but we are not in single_pass mode"
         tf.logging.info("Decoder has finished reading dataset for single_pass.")
         return
+      if counter % 1000 == 0:
+        t1 = time.time()
+        secs = t1-t0
+        tf.logging.info("Decoded {} stories, running @ {} stories per second".format(str(secs), str(counter/secs)))
 
       original_article = batch.original_articles[0]  # string
       original_abstract = batch.original_abstracts[0]  # string

@@ -16,6 +16,8 @@
 
 """This is the top-level file to train, evaluate or test your summarization model"""
 
+
+
 import sys
 import time
 import os
@@ -28,6 +30,7 @@ from model import SummarizationModel
 from decode import BeamSearchDecoder
 import util
 from tensorflow.python import debug as tf_debug
+from tensorflow.python.client import device_lib
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -72,6 +75,18 @@ tf.app.flags.DEFINE_boolean('restore_best_model', False, 'Restore the best model
 # Debugging. See https://www.tensorflow.org/programmers_guide/debugger
 tf.app.flags.DEFINE_boolean('debug', False, "Run in tensorflow's debug mode (watches for NaN/inf values)")
 
+
+def get_device():
+    local_device_protos = device_lib.list_local_devices()
+    gpus = [x.name for x in local_device_protos if x.device_type in ['GPU']]
+    tf.logging.info("GPUs available: {}".format(','.join(gpus)))
+    if len(gpus) > 0:
+      device = [x.name for x in local_device_protos if x.device_type in ['GPU']][0]
+    else:
+      tf.logging.info("Devices available: {}".format(','.join([x.name for x in local_device_protos])))
+      device = [x.name for x in local_device_protos][0]
+    tf.logging.info("Using device: {}".format(device))
+    return device
 
 
 def calc_running_avg_loss(loss, running_avg_loss, summary_writer, step, decay=0.99):
@@ -303,25 +318,26 @@ def main(unused_argv):
   batcher = Batcher(FLAGS.data_path, vocab, hps, single_pass=FLAGS.single_pass)
 
   tf.set_random_seed(111) # a seed value for randomness
+  device = get_device()
 
   if hps.mode == 'train':
     print("creating model...")
-    model = SummarizationModel(hps, vocab)
+    model = SummarizationModel(hps, vocab, device)
     setup_training(model, batcher)
   elif hps.mode == 'eval':
-    model = SummarizationModel(hps, vocab)
+    model = SummarizationModel(hps, vocab, device)
     run_eval(model, batcher, vocab)
   elif hps.mode == 'decode':
     decode_model_hps = hps  # This will be the hyperparameters for the decoder model
     decode_model_hps = hps._replace(max_dec_steps=1) # The model is configured with max_dec_steps=1 because we only ever run one step of the decoder at a time (to do beam search). Note that the batcher is initialized with max_dec_steps equal to e.g. 100 because the batches need to contain the full summaries
-    model = SummarizationModel(decode_model_hps, vocab)
+    model = SummarizationModel(decode_model_hps, vocab, device)
     decoder = BeamSearchDecoder(model, batcher, vocab)
     decoder.decode() # decode indefinitely (unless single_pass=True, in which case deocde the dataset exactly once)
   elif hps.mode == 'rouge':
     decode_model_hps = hps  # This will be the hyperparameters for the decoder model
     decode_model_hps = hps._replace(
       max_dec_steps=1)  # The model is configured with max_dec_steps=1 because we only ever run one step of the decoder at a time (to do beam search). Note that the batcher is initialized with max_dec_steps equal to e.g. 100 because the batches need to contain the full summaries
-    model = SummarizationModel(decode_model_hps, vocab)
+    model = SummarizationModel(decode_model_hps, vocab, device)
     decoder = BeamSearchDecoder(model, batcher, vocab)
     decoder.rouge()  # run rouge evaluation, assumes decode has been run with the same parameters
   else:
