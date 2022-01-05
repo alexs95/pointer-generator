@@ -1,4 +1,4 @@
 outs:
-- md5: 3226347d2894d575c2485c75d0fb0aae
-  size: 353030196
+- md5: 887671a26e82bcf8b645dff9bfeb7dae
+  size: 371011889
   path: pretrained_model_tf1.2.1.zip
