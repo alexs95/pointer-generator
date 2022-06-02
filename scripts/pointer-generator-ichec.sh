@@ -1,7 +1,7 @@
 #!/bin/sh
 #SBATCH -p GpuQ
 #SBATCH --nodes 1
-#SBATCH --time 09:00:00
+#SBATCH --time 07:00:00
 #SBATCH -A ngcom023c
 #SBATCH --mail-user=a.shapovalov1@nuigalway.ie
 #SBATCH --mail-type=ALL
@@ -16,7 +16,7 @@ source activate summarization3.6
 cd $SLURM_SUBMIT_DIR
 python3 run_summarization.py \
 --mode=decode \
---data_path='../cnn-dailymail/finished_files/chunked/val_*' \
+--data_path='../cnn-dailymail/finished_files/chunked/test_*' \
 --vocab_path=../cnn-dailymail/finished_files/vocab \
 --log_root=../pointer-generator/checkpoint \
 --exp_name=pretrained_model_tf1.2.1 \
