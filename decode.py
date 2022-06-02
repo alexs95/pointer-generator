@@ -53,11 +53,11 @@ class BeamSearchDecoder(object):
     # Load an initial checkpoint to use for decoding
     ckpt_path = util.load_ckpt(self._saver, self._sess)
 
-    if FLAGS.single_pass and FLAGS.mode == 'decode':
+    if FLAGS.single_pass:
       # Make a descriptive decode directory name
       ckpt_name = "ckpt-" + ckpt_path.split('-')[-1] # this is something of the form "ckpt-123456"
       self._decode_dir = os.path.join(FLAGS.log_root, get_decode_dir_name(ckpt_name))
-      if os.path.exists(self._decode_dir):
+      if os.path.exists(self._decode_dir) and FLAGS.mode == 'decode':
         raise Exception("single_pass decode directory %s should not already exist" % self._decode_dir)
 
     else: # Generic decode dir name
@@ -75,6 +75,8 @@ class BeamSearchDecoder(object):
 
 
   def rouge(self):
+    print(self._rouge_ref_dir)
+    print(self._rouge_dec_dir)
     results_dict = rouge_eval(self._rouge_ref_dir, self._rouge_dec_dir)
     rouge_log(results_dict, self._decode_dir)
 
